@@ -6,6 +6,7 @@ import string
 import sys
 from datetime import datetime
 from ucb import main, interact
+from TwitterSearch import *
 
 # Look for data directory
 PY_PATH = sys.argv[0]
@@ -50,24 +51,29 @@ def generate_filtered_file(unfiltered_name, term):
             print('Wrote {}.'.format(filtered_path))
     return filtered_path
 
-def tweet_from_line(line, make_tweet):
-    """Parse a line and call make_tweet on its contents."""
-    loc, _, time_text, text = line.strip().split("\t")
-    time = datetime.strptime(time_text, '%Y-%m-%d %H:%M:%S')
-    lat, lon = [float(x) for x in loc[1:-1].split(',')]
-    return make_tweet(text.lower(), time, lat, lon)
+def load_tweets(term='cali'):
+    """Return the list of tweets returned by a twitter search with the term.
 
-def load_tweets(make_tweet, term='cali', file_name='tweets2014.txt'):
-    """Return the list of tweets in file_name that contain term.
-
-    Arguments:
-    make_tweet -- a constructor function that takes four arguments:
-      1) a string containing the words in the tweet
-      2) a datetime.datetime object representing the time of the tweet
-      3) a longitude coordinate
-      4) a latitude coordinate
     """
-    filtered_path = generate_filtered_file(file_name, term)
-    with open(filtered_path, encoding='utf8') as tweets:
-        return [tweet_from_line(line, make_tweet) for line in tweets
-                if len(line.strip().split("\t")) >= 4]
+    # filtered_path = generate_filtered_file(file_name, term)
+    # with open(filtered_path, encoding='utf8') as tweets:
+    #     return [tweet_from_line(line, make_tweet) for line in tweets
+    #             if len(line.strip().split("\t")) >= 4]
+    try:
+        tso = TwitterSearchOrder()
+        tso.add_keyword(term)
+
+        ts = TwitterSearch(
+            consumer_key = '',
+            consumer_secret = '',
+            access_token = '',
+            access_token_secret = ''
+            )
+
+        tweetList = ts.search_tweets_iterable(tso)
+
+        return [t for t in tweetList if t['coordinates'] is not None]
+
+    except TwitterSearchException as e:
+        print(e)
+

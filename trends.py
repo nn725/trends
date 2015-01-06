@@ -1,5 +1,6 @@
 """Visualizing Twitter Sentiment Across America"""
 
+import sys
 from data import word_sentiments, load_tweets
 from datetime import datetime
 from geo import us_states, geo_distance, make_position, longitude, latitude
@@ -11,7 +12,6 @@ except ImportError as e:
     print('Could not load tkinter: ' + str(e))
     HAS_TKINTER = False
 from string import ascii_letters
-from ucb import main, trace, interact, log_current_line
 
 
 ###################################
@@ -21,72 +21,17 @@ from ucb import main, trace, interact, log_current_line
 # tweet data abstraction (A), represented as a list
 # -------------------------------------------------
 
-def make_tweet(text, time, lat, lon):
-    """Return a tweet, represented as a Python list.
-
-    Arguments:
-    text  -- A string; the text of the tweet, all in lowercase
-    time  -- A datetime object; the time that the tweet was posted
-    lat   -- A number; the latitude of the tweet's location
-    lon   -- A number; the longitude of the tweet's location
-
-    >>> t = make_tweet('just ate lunch', datetime(2014, 9, 29, 13), 122, 37)
-    >>> tweet_text(t)
-    'just ate lunch'
-    >>> tweet_time(t)
-    datetime.datetime(2014, 9, 29, 13, 0)
-    >>> p = tweet_location(t)
-    >>> latitude(p)
-    122
-    >>> tweet_string(t)
-    '"just ate lunch" @ (122, 37)'
-    """
-    return [text, time, lat, lon]
-
 def tweet_text(tweet):
     """Return a string, the words in the text of a tweet."""
-    return tweet[0]
+    return tweet['text']
 
 def tweet_time(tweet):
     """Return the datetime representing when a tweet was posted."""
-    return tweet[1]
+    return tweet['created_at']
 
 def tweet_location(tweet):
     """Return a position representing a tweet's location."""
-    return make_position(tweet[2],tweet[3])
-
-
-# tweet data abstraction (B), represented as a function
-# -----------------------------------------------------
-
-def make_tweet_fn(text, time, lat, lon):
-    """An alternate implementation of make_tweet: a tweet is a function.
-
-    >>> t = make_tweet_fn('just ate lunch', datetime(2014, 9, 29, 13), 122, 37)
-    >>> tweet_text_fn(t)
-    'just ate lunch'
-    >>> tweet_time_fn(t)
-    datetime.datetime(2014, 9, 29, 13, 0)
-    >>> latitude(tweet_location_fn(t))
-    122
-    """
-    # Please don't call make_tweet in your solution
-    def helper(key):
-        dic = {'text' : text, 'time' : time, 'lat' : lat, 'lon' : lon}
-        return dic[key]
-    return helper
-
-def tweet_text_fn(tweet):
-    """Return a string, the words in the text of a functional tweet."""
-    return tweet('text')
-
-def tweet_time_fn(tweet):
-    """Return the datetime representing when a functional tweet was posted."""
-    return tweet('time')
-
-def tweet_location_fn(tweet):
-    """Return a position representing a functional tweet's location."""
-    return make_position(tweet('lat'), tweet('lon'))
+    return make_position(tweet['coordinates']['coordinates'][0],tweet['coordinates']['coordinates'][1])
 
 ### === +++ ABSTRACTION BARRIER +++ === ###
 
@@ -469,13 +414,13 @@ def draw_state_sentiments(state_sentiments):
             draw_name(name, center)
 
 @uses_tkinter
-def draw_map_for_query(term='my job', file_name='tweets2014.txt'):
+def draw_map_for_query(term='my job'):
     """Draw the sentiment map corresponding to the tweets that contain term.
 
     Some term suggestions:
     New York, Texas, sandwich, my life, justinbieber
     """
-    tweets = load_tweets(make_tweet, term, file_name)
+    tweets = load_tweets(term)
     tweets_by_state = group_tweets_by_state(tweets)
     state_sentiments = average_sentiments(tweets_by_state)
     draw_state_sentiments(state_sentiments)
@@ -485,18 +430,7 @@ def draw_map_for_query(term='my job', file_name='tweets2014.txt'):
             draw_dot(tweet_location(tweet), sentiment_value(s))
     wait()
 
-def swap_tweet_representation(other=[make_tweet_fn, tweet_text_fn,
-                                     tweet_time_fn, tweet_location_fn]):
-    """Swap to another representation of tweets. Call again to swap back."""
-    global make_tweet, tweet_text, tweet_time, tweet_location
-    swap_to = tuple(other)
-    other[:] = [make_tweet, tweet_text, tweet_time, tweet_location]
-    make_tweet, tweet_text, tweet_time, tweet_location = swap_to
 
-
-
-
-@main
 def run(*args):
     """Read command-line arguments and calls corresponding functions."""
     import argparse
@@ -504,19 +438,14 @@ def run(*args):
     parser.add_argument('--print_sentiment', '-p', action='store_true')
     parser.add_argument('--draw_centered_map', '-d', action='store_true')
     parser.add_argument('--draw_map_for_query', '-m', type=str)
-    parser.add_argument('--tweets_file', '-t', type=str, default='tweets2014.txt')
-    parser.add_argument('--use_functional_tweets', '-f', action='store_true')
     parser.add_argument('text', metavar='T', type=str, nargs='*',
                         help='Text to process')
     args = parser.parse_args()
-    if args.use_functional_tweets:
-        swap_tweet_representation()
-        print("Now using a functional representation of tweets!")
-        args.use_functional_tweets = False
     if args.draw_map_for_query:
-        print("Using", args.tweets_file)
-        draw_map_for_query(args.draw_map_for_query, args.tweets_file)
+        draw_map_for_query(args.draw_map_for_query)
         return
     for name, execute in args.__dict__.items():
         if name != 'text' and name != 'tweets_file' and execute:
             globals()[name](' '.join(args.text))
+
+if __name__ == '__main__': run(sys.argv[1:])
